@@ -291,6 +291,12 @@ def execute_plans(plan_dict, workers=1):
 
     submission_thread.join()
 
+    if len(failures) > 0:
+        logger.debug('Failures occurred, exiting unsuccessfully')
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
 
 def cancel_signal_handler(signal, frame):
     global _cancelled, _killed
