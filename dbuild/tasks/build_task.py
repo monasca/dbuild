@@ -99,7 +99,7 @@ def execute_plan(plan):
     first_image = images.pop(0)
     plan.status.description = 'build %s' % first_image
 
-    client = docker.from_env()
+    client = docker.from_env(version='auto')
 
     logger.debug('building: path=%s, tag=%s, args=%r',
                  module_path, first_image, plan.arguments['build_args'])

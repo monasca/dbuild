@@ -27,7 +27,7 @@ ARG_TYPES = [ARG_VARIANT, ARG_APPEND, ARG_TAG]
 
 
 def execute_plan(plan):
-    client = docker.from_env()
+    client = docker.from_env(version='auto')
 
     image = plan.arguments['image']
     plan.status.description = 'push %s' % image
