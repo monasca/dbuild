@@ -1,0 +1,6 @@
+[run]
+branch = True
+source = dbuild
+
+[report]
+ignore_errors = True
