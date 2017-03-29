@@ -253,6 +253,10 @@ def get_docker_client_version():
 
 
 def verify_docker_version():
+    if os.environ.get('IGNORE_DOCKER_VERSION', 'false') == 'true':
+        logger.debug('Skipping Docker version check')
+        return
+
     docker_client_version = get_docker_client_version()
     if docker_client_version >= MIN_DOCKER_VERSION:
         logger.debug('Docker version %s meets requirement >= %s',
