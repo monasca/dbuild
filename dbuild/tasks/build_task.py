@@ -62,6 +62,14 @@ def get_proxy_config():
     elif 'NO_PROXY' in os.environ:
         proxies['NO_PROXY'] = os.environ['no_proxy']
 
+    # copy UPPER to lower for badly behaved apps
+    if 'HTTP_PROXY' in proxies:
+        proxies['http_proxy'] = proxies['HTTP_PROXY']
+    if 'HTTPS_PROXY' in proxies:
+        proxies['https_proxy'] = proxies['HTTPS_PROXY']
+    if 'NO_PROXY' in proxies:
+        proxies['no_proxy'] = proxies['NO_PROXY']
+
     return proxies
 
 
@@ -93,6 +101,9 @@ def execute_plan(plan):
 
     client = docker.from_env()
 
+    logger.debug('building: path=%s, tag=%s, args=%r',
+                 module_path, first_image, plan.arguments['build_args'])
+
     # bulid phase
     stream = client.api.build(buildargs=plan.arguments['build_args'],
                               path=module_path, rm=True, tag=first_image,
@@ -101,16 +112,22 @@ def execute_plan(plan):
     for event in stream:
         last_event = event
 
-        m = REGEX_DOCKER_BUILD_STEP.match(event['stream'])
-        if m:
-            step = m.group(1)
-            plan.status.current = int(step)
+        if 'error' in event:
+            logger.error(event['error'])
+            plan.status.description = 'error'
 
-            start, end = m.span()
-            cmd_snippet = last_event['stream'][end:20].strip()
-            plan.status.description = 'build %s %s %s' % (first_image,
-                                                          m.group(3),
-                                                          cmd_snippet)
+        if 'stream' in event:
+            m = REGEX_DOCKER_BUILD_STEP.match(event['stream'])
+            logger.debug('build %s: %s', plan.module, event['stream'].strip())
+            if m:
+                step = m.group(1)
+                plan.status.current = int(step)
+
+                start, end = m.span()
+                cmd_snippet = last_event['stream'][end:20].strip()
+                plan.status.description = 'build %s %s %s' % (first_image,
+                                                              m.group(3),
+                                                              cmd_snippet)
 
     # grabbed from docker-py/docker/models/images.py:ImageCollection.build
     if not last_event:
