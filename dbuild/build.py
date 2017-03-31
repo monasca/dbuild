@@ -81,10 +81,13 @@ def build_plan_tree(global_args, verb_args, module, verb_defs, intents=None):
                                                 plan.intents)
                 for child in plan.children:
                     child.parent = plan
-    except VerbException:
+    except VerbException as ex:
         logger.error('Error while building execution plan, exiting!')
+        logger.error('Reason: %s', ex)
+        logger.debug(ex, exc_info=True)
         logger.debug('last verb: %r', verb_def)
-        logger.debug('global_args=%r verb_args=%r module=%r')
+        logger.debug('global_args=%r verb_args=%r module=%r',
+                     global_args, verb_args, module)
         sys.exit(1)
 
     return plans

@@ -124,7 +124,7 @@ def resolve_variants(verb_args, config, check_tag=True):
                     repository=variant['repository'])
 
             tags = []
-            if variant_base_tag.is_complete():
+            if variant_base_tag.is_complete(check_tag):
                 tags.append(variant_base_tag)
 
             if 'aliases' in variant:
@@ -153,11 +153,22 @@ def resolve_variants(verb_args, config, check_tag=True):
         return resolved_variants
     else:
         logger.info('No variant given, using inferred base tag: %r', base_tag)
-        str_args = [t.value for t in tag_args]
-        tags = docker_tags_from_args(str_args, base_tag, check_tag)
+
+        tags = []
+        if base_tag.is_complete(check_tag):
+            tags.append(base_tag)
+
+        if tag_args:
+            str_args = [t.value for t in tag_args]
+            dtags = docker_tags_from_args(str_args, base_tag, check_tag)
+            if append:
+                tags.extend(dtags)
+            else:
+                tags = dtags
+
         if not tags:
             raise VerbException('No valid Docker tag given in arguments, '
-                                'known: %r', tags)
+                                'known: %r' % tags)
 
         return [{
             'variant_tag': None,

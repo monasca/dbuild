@@ -18,9 +18,8 @@ import os
 
 import requests
 
-from dbuild.docker_utils import (ARG_TAG,
-                                 load_config, resolve_variants, get_variant)
-from dbuild.verb import verb, Plan, VerbException
+from dbuild.docker_utils import ARG_TAG, load_config, resolve_variants
+from dbuild.verb import verb, Plan
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,6 @@ DOCKER_HUB_PASSWORD = os.environ.get('DOCKER_HUB_PASSWORD', None)
 DOCKER_HUB_TOKEN = os.environ.get('DOCKER_HUB_TOKEN', None)
 
 _auth_token = None
-ca = '/home/tim/.config/betwixt/ssl/certs/ca.pem'
 
 
 def get_auth_token():
@@ -44,7 +42,7 @@ def get_auth_token():
     if DOCKER_HUB_TOKEN:
         return DOCKER_HUB_TOKEN
 
-    username = DOCKER_HUB_PASSWORD
+    username = DOCKER_HUB_USERNAME
     if not username:
         username = raw_input('Docker Hub username: ')
 
@@ -55,7 +53,7 @@ def get_auth_token():
     r = requests.post(DOCKER_HUB_API + DOCKER_HUB_ENDPOINT_LOGIN, json={
         'username': username,
         'password': password
-    }, verify=ca)
+    })
     r.raise_for_status()
 
     _auth_token = r.json()['token']
@@ -77,10 +75,9 @@ def execute_plan(plan):
                            tag.repository)
         r = requests.patch(url, headers=headers, json={
             'full_description': readme
-        }, verify=ca)
+        })
         if r.status_code == requests.codes.ok:
             logger.info('Updated README for repository: %s', tag.repository)
-            logger.info(r.content)
         else:
             logger.warn('Failed to update README for repository %s:', tag.repository)
             logger.warn('Server said: %s', r.text)
