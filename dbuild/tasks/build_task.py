@@ -161,7 +161,6 @@ def build(global_args, verb_args, module, intents):
         build_args.update(base_config['args'])
 
     override_tags = []
-    append_tags = []
     rebuild_targets = []
 
     for arg in filter(lambda a: a.type == 'build_arg', verb_args):
@@ -174,12 +173,8 @@ def build(global_args, verb_args, module, intents):
     for arg in filter(lambda a: a.type == 'image_override_tag', verb_args):
         override_tags.append(arg.groups[0])
 
-    for arg in filter(lambda a: a.type == 'image_append_tag', verb_args):
-        append_tags.append(arg.groups[0])
-
     logger.debug('Resolved build parameters:')
     logger.debug('build_args: %r', build_args)
-    logger.debug('append_tags: %r', append_tags)
     logger.debug('rebuild_targets: %r', rebuild_targets)
 
     if rebuild_targets:
