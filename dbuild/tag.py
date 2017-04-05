@@ -41,7 +41,7 @@ RE_REGISTRY_NAMESPACE = re.compile(r'^([\w.-]+:[\d]+)/(\w[\w.-]*)$')
 RE_REGISTRY_REPOSITORY = re.compile(r'^([\w.-]+:[\d]+)/(\w[\w.-]*)/(\w[\w.-]*)$')
 
 # match a full tag expression, e.g. hub.registry.com:1234/repo/image:tag
-RE_FULL = re.compile(r'^([\w.-]+:[\d]+)/(\w[\w.-]*)/(\w[\w.-]*):(\w[\w_.-]*)$')
+RE_FULL = re.compile(r'^([\w.-]+(?::[\d]+)?)/(\w[\w.-]*)/(\w[\w.-]*):(\w[\w_.-]*)$')
 
 # match a full tag w/ implicit registry (docker hub), e.g. repo/image:tag
 RE_FULL_IMPLICIT = re.compile(r'^(\w[\w.-]*)/(\w[\w.-]*):(\w[\w_.-]*)$')
@@ -64,7 +64,13 @@ class DockerTag(object):
         # split a 'repository' into its separate (some optional) components
         parts = []
         if self.registry:
-            parts.append(self.registry)
+            r = self.registry
+            if ':' in r:
+                host, port = r.split(':')
+                if port == '443':
+                    r = host
+
+            parts.append(r)
 
         if self.namespace:
             parts.append(self.namespace)
