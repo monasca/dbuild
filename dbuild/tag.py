@@ -76,14 +76,9 @@ class DockerTag(object):
     @property
     def full(self):
         if self.tag:
-            image = '%s:%s' % (self.repository, self.tag)
+            return '%s:%s' % (self.repository, self.tag)
         else:
-            image = self.repository
-
-        if self.registry:
-            return '%s/%s' % (self.registry, image)
-        else:
-            return image
+            return self.repository
 
     def mutate(self, **kwargs):
         registry, namespace, image = None, None, None
