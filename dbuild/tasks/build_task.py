@@ -118,13 +118,16 @@ def execute_plan(plan):
 
         if 'stream' in event:
             m = REGEX_DOCKER_BUILD_STEP.match(event['stream'])
-            logger.debug('build %s: %s', plan.module, event['stream'].strip())
+
+            for line in event['stream'].strip().splitlines():
+                logger.debug('build %s: %s', plan.module, line)
+
             if m:
                 step = m.group(1)
                 plan.status.current = int(step)
 
                 start, end = m.span()
-                cmd_snippet = last_event['stream'][end:20].strip()
+                cmd_snippet = event['stream'][end:20].strip()
                 plan.status.description = 'build %s %s %s' % (first_image,
                                                               m.group(3),
                                                               cmd_snippet)
@@ -134,7 +137,7 @@ def execute_plan(plan):
         raise BuildError('Unknown')
 
     # the last line must say success, otherwise the build failed
-    m = REGEX_DOCKER_BUILD_SUCCESS.match(last_event['stream'])
+    m = REGEX_DOCKER_BUILD_SUCCESS.match(last_event.get('stream') or '')
     if not m:
         raise BuildError(last_event.get('error') or last_event)
 
