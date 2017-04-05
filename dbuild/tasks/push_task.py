@@ -33,7 +33,21 @@ def execute_plan(plan):
     plan.status.description = 'push %s' % image
 
     repo, tag = image.rsplit(':', 1)
-    client.images.push(repo, tag=tag)
+
+    last_event = None
+    for event in client.images.push(repo, tag=tag, stream=True, decode=True):
+        last_event = event
+
+        if 'status' in event:
+            logger.debug('push %s: %s', plan.module, event['status'])
+        elif 'error' in event:
+            logger.error('push %s: %s', plan.module, event['error'])
+        else:
+            logger.debug('push %s: %s', plan.module, event)
+
+    if 'error' in last_event:
+        logger.error('Push failed with error: %s', last_event['error'])
+        plan.status.failed = True
 
 
 def images_from_args(global_args, verb_args, module):
