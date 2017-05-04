@@ -73,6 +73,17 @@ class ExecutionStatus(object):
     def success(self):
         return self.finished and not (self.failed or self.cancelled)
 
+    @property
+    def as_str(self):
+        if self.success:
+            return 'success'
+        elif self.failed:
+            return 'failed'
+        elif self.cancelled:
+            return 'cancelled'
+        else:
+            return 'other'
+
 
 @attr.s
 class Plan(object):
@@ -87,6 +98,8 @@ class Plan(object):
     parent = attr.ib(default=None, repr=False)
     children = attr.ib(default=attr.Factory(list), repr=False)
     status = attr.ib(default=attr.Factory(ExecutionStatus), repr=False)
+
+    artifacts = attr.ib(default=attr.Factory(list), repr=False)
 
     def is_dead(self):
         if self.parent and self.parent.status.failed:

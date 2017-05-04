@@ -103,6 +103,19 @@ def print_plans(plans, offset=''):
         print_plans(plan.children, offset + '  ')
 
 
+def print_artifacts(plans, offset=''):
+    for plan in plans:
+        print textwrap.fill(
+            '%s - %s: %s' % (plan.verb, plan.status.as_str,
+                             ', '.join(plan.artifacts)),
+            width=200,
+            initial_indent=offset,
+            subsequent_indent=offset + '     '
+        )
+
+        print_artifacts(plan.children, offset + '  ')
+
+
 def flatten(dest, plans):
     next_level = []
     for plan in plans:
@@ -194,9 +207,6 @@ def execute_plans(plan_dict, workers=1):
         root_plans.extend(plan_sublist)
 
     flat_plans = flatten([], root_plans)
-    #for plan in flat_plans:
-    #    print plan
-
     submission_thread = Thread(target=submission_thread_func,
                                args=(flat_plans, workers))
     submission_thread.start()
@@ -289,12 +299,19 @@ def execute_plans(plan_dict, workers=1):
     cancelled = filter(lambda p: p.status.finished and p.status.cancelled,
                        flat_plans)
 
+    print ''
+    for module, plan_list in plan_dict.items():
+        print 'artifacts:', module
+        print_artifacts(plan_list, offset='  ')
+        print ''
+
     logger.info('all tasks completed, %d success, %d fail, %d cancelled',
                 len(successes), len(failures), len(cancelled))
 
     submission_thread.join()
 
     if len(failures) > 0:
+        print ''
         logger.debug('Failures occurred, exiting unsuccessfully')
         sys.exit(1)
     else:

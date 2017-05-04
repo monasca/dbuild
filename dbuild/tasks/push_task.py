@@ -48,6 +48,8 @@ def execute_plan(plan):
     if 'error' in last_event:
         logger.error('Push failed with error: %s', last_event['error'])
         plan.status.failed = True
+    else:
+        plan.artifacts.append(image)
 
 
 def images_from_args(global_args, verb_args, module):
@@ -59,7 +61,7 @@ def images_from_args(global_args, verb_args, module):
     images = set()
     for variant in variants:
         for tag in variant['tags']:
-            images.add(tag.full)
+            images.add(tag.full_interp)
 
     return images
 

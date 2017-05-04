@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import datetime
 import re
 
 import attr
@@ -29,7 +30,7 @@ RE_IMAGE = re.compile(r'^/(\w[\w_.-]*)$')
 RE_REPOSITORY = re.compile(r'^(\w[\w.-]*)/(\w[\w.-]*)$')
 
 # match only a tag, e.g. :tag
-RE_TAG = re.compile(r'^:(\w[\w_.-]*)$')
+RE_TAG = re.compile(r'^:([\w{][\w{}_.-]*)$')
 
 # match an image with a tag, e.g. someimage:tag
 RE_TAGGED_IMAGE = re.compile(r'^/(\w[\w_.-]*):(\w[\w_.-]*)$')
@@ -41,14 +42,22 @@ RE_REGISTRY_NAMESPACE = re.compile(r'^([\w.-]+:[\d]+)/(\w[\w.-]*)$')
 RE_REGISTRY_REPOSITORY = re.compile(r'^([\w.-]+:[\d]+)/(\w[\w.-]*)/(\w[\w.-]*)$')
 
 # match a full tag expression, e.g. hub.registry.com:1234/repo/image:tag
-RE_FULL = re.compile(r'^([\w.-]+(?::[\d]+)?)/(\w[\w.-]*)/(\w[\w.-]*):(\w[\w_.-]*)$')
+RE_FULL = re.compile(r'^([\w.-]+(?::[\d]+)?)/(\w[\w.-]*)/(\w[\w.-]*):([\w{][\w{}_.-]*)$')
 
 # match a full tag w/ implicit registry (docker hub), e.g. repo/image:tag
-RE_FULL_IMPLICIT = re.compile(r'^(\w[\w.-]*)/(\w[\w.-]*):(\w[\w_.-]*)$')
+RE_FULL_IMPLICIT = re.compile(r'^(\w[\w.-]*)/(\w[\w.-]*):([\w{][\w{}_.-]*)$')
 
 TAG_REGEXES = [RE_REGISTRY, RE_NAMESPACE, RE_IMAGE, RE_REPOSITORY,
                RE_TAG, RE_TAGGED_IMAGE, RE_REGISTRY_NAMESPACE,
                RE_REGISTRY_REPOSITORY, RE_FULL, RE_FULL_IMPLICIT]
+
+
+def interp_tag(tag_str):
+    date = datetime.datetime.now()
+    return tag_str.format(
+        date=date.strftime('%Y%m%d'),
+        time=date.strftime('%H%M%S')
+    )
 
 
 @attr.s
@@ -85,6 +94,10 @@ class DockerTag(object):
             return '%s:%s' % (self.repository, self.tag)
         else:
             return self.repository
+
+    @property
+    def full_interp(self):
+        return interp_tag(self.full)
 
     def mutate(self, **kwargs):
         registry, namespace, image = None, None, None
@@ -169,47 +182,50 @@ class DockerTagParseException(Exception):
 
 
 def mutate_tag(base_tag, arg):
-    m = RE_FULL.match(arg)
+    # match against an interpolated tag, but pass through the raw string
+    interp = interp_tag(arg)
+
+    m = RE_FULL.match(interp)
     if m:
         return DockerTag(*m.groups())
 
-    m = RE_FULL_IMPLICIT.match(arg)
+    m = RE_FULL_IMPLICIT.match(interp)
     if m:
         namespace, image, tag = m.groups()
         return DockerTag(None, namespace, image, tag)
 
-    m = RE_REGISTRY.match(arg)
+    m = RE_REGISTRY.match(interp)
     if m:
         return base_tag.mutate(registry=m.group(1))
 
-    m = RE_NAMESPACE.match(arg)
+    m = RE_NAMESPACE.match(interp)
     if m:
         return base_tag.mutate(namespace=m.group(1))
 
-    m = RE_IMAGE.match(arg)
+    m = RE_IMAGE.match(interp)
     if m:
         return base_tag.mutate(image=m.group(1))
 
-    m = RE_REPOSITORY.match(arg)
+    m = RE_REPOSITORY.match(interp)
     if m:
         namespace, image = m.groups()
         return base_tag.mutate(namespace=namespace, image=image)
 
-    m = RE_TAG.match(arg)
+    m = RE_TAG.match(interp)
     if m:
         return base_tag.mutate(tag=m.group(1))
 
-    m = RE_TAGGED_IMAGE.match(arg)
+    m = RE_TAGGED_IMAGE.match(interp)
     if m:
         image, tag = m.groups()
         return base_tag.mutate(image=image, tag=tag)
 
-    m = RE_REGISTRY_NAMESPACE.match(arg)
+    m = RE_REGISTRY_NAMESPACE.match(interp)
     if m:
         registry, namespace = m.groups()
         return base_tag.mutate(registry=registry, namespace=namespace)
 
-    m = RE_REGISTRY_REPOSITORY.match(arg)
+    m = RE_REGISTRY_REPOSITORY.match(interp)
     if m:
         registry, namespace, image = m.groups()
         return base_tag.mutate(registry=registry, namespace=namespace, image=image)

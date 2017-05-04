@@ -73,28 +73,11 @@ def get_proxy_config():
     return proxies
 
 
-def get_docker_args(base_path, module, repo, tags, build_args):
-    module_path = os.path.join(base_path, module)
-    docker_args = ['build']
-    if tags:
-        for tag in tags:
-            docker_args.extend(['--tag', '%s:%s' % (repo, tag)])
-    else:
-        docker_args.extend(['--tag', repo])
-
-    for k, v in build_args.items():
-        docker_args.extend(['--build-arg', '%s=%s' % (k, v)])
-
-    docker_args.append(module_path)
-
-    return docker_args
-
-
 def execute_plan(plan):
     plan.status.blocking = False
 
     module_path = os.path.join(plan.arguments['base_path'], plan.module)
-    images = [tag.full for tag in plan.arguments['tags']]
+    images = [tag.full_interp for tag in plan.arguments['tags']]
 
     first_image = images.pop(0)
     plan.status.description = 'build %s' % first_image
@@ -104,7 +87,7 @@ def execute_plan(plan):
     logger.debug('building: path=%s, tag=%s, args=%r',
                  module_path, first_image, plan.arguments['build_args'])
 
-    # bulid phase
+    # build phase
     stream = client.api.build(buildargs=plan.arguments['build_args'],
                               path=module_path, rm=True, tag=first_image,
                               decode=True)
@@ -144,11 +127,15 @@ def execute_plan(plan):
     image_id = m.group(2)
     image = client.images.get(image_id)
 
+    plan.artifacts.append(first_image)
+
     # tagging phase
     plan.status.current = plan.status.total
     for extra_tag in images:
         repo, tag = extra_tag.rsplit(':', 1)
         image.tag(repo, tag=tag)
+
+        plan.artifacts.append(extra_tag)
 
 
 @verb('build', priority=1, args=ARG_TYPES,
@@ -209,6 +196,7 @@ def build(global_args, verb_args, module, intents):
         else:
             variant_build_args = {}
         variant_build_args.update(build_args)
+        logger.debug('variant_build_args: %r', variant_build_args)
 
         # we'll generate a set of images for tasks later in the pipeline, e.g.
         # push - not used for build
