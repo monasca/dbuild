@@ -17,6 +17,8 @@ import logging
 import os
 import re
 
+from collections import deque
+
 import docker
 
 from docker.errors import BuildError
@@ -91,9 +93,9 @@ def execute_plan(plan):
     stream = client.api.build(buildargs=plan.arguments['build_args'],
                               path=module_path, rm=True, tag=first_image,
                               decode=True)
-    last_event = None
+    last_events = deque(maxlen=2)
     for event in stream:
-        last_event = event
+        last_events.append(event)
 
         if 'error' in event:
             logger.error(event['error'])
@@ -116,15 +118,30 @@ def execute_plan(plan):
                                                               cmd_snippet)
 
     # grabbed from docker-py/docker/models/images.py:ImageCollection.build
-    if not last_event:
+    if not last_events[-1]:
         raise BuildError('Unknown')
 
     # the last line must say success, otherwise the build failed
-    m = REGEX_DOCKER_BUILD_SUCCESS.match(last_event.get('stream') or '')
-    if not m:
-        raise BuildError(last_event.get('error') or last_event)
+    image_id = None
+    build_errors = []
+    for event in last_events:
+        m = REGEX_DOCKER_BUILD_SUCCESS.match(event.get('stream') or '')
+        if event.get('error'):
+            build_errors.append(event.get('error'))
 
-    image_id = m.group(2)
+        if m:
+            image_id = m.group(2)
+
+    if build_errors:
+        raise BuildError(build_errors)
+
+    if not image_id:
+        if build_errors:
+            raise BuildError('Build failed, errors: %r' % build_errors)
+        else:
+            raise BuildError('Build did not succeed. Last '
+                             'line: %s' % last_events[-1])
+
     image = client.images.get(image_id)
 
     plan.artifacts.append(first_image)
