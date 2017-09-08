@@ -89,6 +89,12 @@ def execute_plan(plan):
     logger.debug('building: path=%s, tag=%s, args=%r',
                  module_path, first_image, plan.arguments['build_args'])
 
+    build_log = plan.arguments['build_log']
+    if plan.arguments['log_file']:
+        log_file = open(plan.arguments['log_file'], 'w')
+    else:
+        log_file = None
+
     # build phase
     stream = client.api.build(buildargs=plan.arguments['build_args'],
                               path=module_path, rm=True, tag=first_image,
@@ -105,8 +111,12 @@ def execute_plan(plan):
             m = REGEX_DOCKER_BUILD_STEP.match(event['stream'])
 
             for line in event['stream'].strip().splitlines():
-                logger.debug('build %s: %s', plan.module, line)
+                if build_log:
+                    logger.info('build %s: %s', plan.module, line)
 
+                if log_file:
+                    log_file.write(line)
+                    log_file.write('\n')
             if m:
                 step = m.group(1)
                 plan.status.current = int(step)
@@ -116,6 +126,9 @@ def execute_plan(plan):
                 plan.status.description = 'build %s %s %s' % (first_image,
                                                               m.group(3),
                                                               cmd_snippet)
+
+    if log_file:
+        log_file.close()
 
     # grabbed from docker-py/docker/models/images.py:ImageCollection.build
     if not last_events[-1]:
@@ -227,10 +240,20 @@ def build(global_args, verb_args, module, intents):
         else:
             variant_intents['images'] = images
 
+        if global_args.build_log_dir:
+            datestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            file_name = '%s-%s-%s.log' % (datestamp, module,
+                                          variant_args['variant_tag'])
+            log_file = os.path.join(global_args.build_log_dir, file_name)
+        else:
+            log_file = None
+
         plan = Plan('build', module, execute_plan, variant_intents, {
             'base_path': global_args.base_path,
             'tags': variant_args['tags'],
-            'build_args': variant_build_args
+            'build_args': variant_build_args,
+            'build_log': global_args.build_log,
+            'log_file': log_file
         })
         plan.status.total = len(dockerfile.structure)
         plans.append(plan)

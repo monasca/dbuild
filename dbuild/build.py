@@ -362,6 +362,12 @@ def main():
                             epilog=epilog)
     parser.add_argument('-d', '--debug', action='store_true',
                         help='enable debug logging')
+    parser.add_argument('-l', '--build-log', action='store_true',
+                        default=False,
+                        help='log container build output to stdout')
+    parser.add_argument('--build-log-dir', default=None,
+                        help='log container build output to file in specified '
+                             'directory')
     parser.add_argument('-w', '--workers', default=1, type=int,
                         help='number of parallel workers')
     parser.add_argument('-s', '--show-plans', action='store_true',
@@ -404,6 +410,11 @@ def main():
             print ''
 
     logger.info('%d steps generated from input', step_count)
+
+    if arguments.build_log_dir:
+        if not os.path.exists(arguments.build_log_dir):
+            logger.debug('creating log directory %s', arguments.build_log_dir)
+            os.makedirs(arguments.build_log_dir)
 
     signal.signal(signal.SIGINT, cancel_signal_handler)  # signal signal
     execute_plans(plans, arguments.workers)
