@@ -13,6 +13,7 @@
 # under the License.
 
 import datetime
+import io
 import logging
 import os
 import re
@@ -91,7 +92,7 @@ def execute_plan(plan):
 
     build_log = plan.arguments['build_log']
     if plan.arguments['log_file']:
-        log_file = open(plan.arguments['log_file'], 'w')
+        log_file = io.open(plan.arguments['log_file'], 'w', encoding='UTF-8')
     else:
         log_file = None
 
@@ -116,7 +117,9 @@ def execute_plan(plan):
 
                 if log_file:
                     log_file.write(line)
-                    log_file.write('\n')
+                    if not line.endswith('\n'):
+                        log_file.write(u'\n')
+                    log_file.flush()
             if m:
                 step = m.group(1)
                 plan.status.current = int(step)
