@@ -24,7 +24,7 @@ from distutils.version import LooseVersion
 from dockerfile_parse import DockerfileParser
 
 from dbuild.tag import (TAG_REGEXES, DockerTag,
-                        parse_docker_tag, docker_tags_from_args)
+                        parse_docker_tag, docker_tags_from_args, interp_tag)
 from dbuild.verb import Argument, VerbException
 
 REGEX_MODULE = re.compile(r'^[a-z0-9\-]+$')
@@ -130,6 +130,8 @@ def resolve_variants(verb_args, config, check_tag=True):
             if 'aliases' in variant:
                 tags.extend(docker_tags_from_args(variant['aliases'],
                                                   variant_base_tag))
+            elif check_tag_contains_date(variant['tag']):
+                variant_base_tag.tag = interp_tag(variant['tag'])
 
             if tag_args:
                 str_args = [t.value for t in tag_args]
@@ -174,6 +176,10 @@ def resolve_variants(verb_args, config, check_tag=True):
             'variant_tag': None,
             'tags': tags
         }]
+
+
+def check_tag_contains_date(tag):
+    return 'date' in tag and 'time' in tag
 
 
 def load_dockerfile(base_path, module):
